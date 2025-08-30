@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Search, X, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const commonIngredients = [
   "Rice", "Chicken", "Eggs", "Onions", "Garlic", "Tomatoes", 
@@ -14,6 +16,8 @@ const commonIngredients = [
 const IngredientInput = () => {
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const addIngredient = (ingredient: string) => {
     if (!selectedIngredients.includes(ingredient)) {
@@ -37,8 +41,28 @@ const IngredientInput = () => {
     !selectedIngredients.includes(ingredient)
   );
 
+  const handleFindRecipes = () => {
+    if (selectedIngredients.length === 0) {
+      toast({
+        title: "No ingredients selected",
+        description: "Please select at least one ingredient to find recipes",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // For demo purposes, scroll to recipes section
+    const recipeSection = document.querySelector('[data-section="recipes"]');
+    recipeSection?.scrollIntoView({ behavior: 'smooth' });
+
+    toast({
+      title: `Found recipes with ${selectedIngredients.join(', ')}!`,
+      description: `Showing recipes that use your selected ingredients`,
+    });
+  };
+
   return (
-    <section className="py-16 bg-background">
+    <section className="py-16 bg-background" data-section="ingredients">
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
@@ -107,7 +131,12 @@ const IngredientInput = () => {
             {/* Find Recipes Button */}
             {selectedIngredients.length > 0 && (
               <div className="text-center">
-                <Button variant="hero" size="lg" className="px-12">
+                <Button 
+                  variant="hero" 
+                  size="lg" 
+                  className="px-12"
+                  onClick={handleFindRecipes}
+                >
                   Find {selectedIngredients.length > 1 ? 'Recipes' : 'Recipe'} 
                   ({selectedIngredients.length} ingredient{selectedIngredients.length > 1 ? 's' : ''})
                 </Button>

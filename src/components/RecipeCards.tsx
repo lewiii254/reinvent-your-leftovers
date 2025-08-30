@@ -2,49 +2,68 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, Users, Leaf, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const sampleRecipes = [
-  {
-    id: 1,
-    title: "Leftover Rice Fried Rice",
-    image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop",
-    prepTime: "15 min",
-    servings: 4,
-    difficulty: "Easy",
-    rating: 4.8,
-    tags: ["Quick", "Asian", "Vegetarian"],
-    ingredients: ["Rice", "Eggs", "Vegetables", "Soy Sauce"],
-    description: "Transform your leftover rice into a delicious, restaurant-quality fried rice."
-  },
-  {
-    id: 2,
-    title: "Chicken & Vegetable Stir Fry",
-    image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop",
-    prepTime: "20 min",
-    servings: 3,
-    difficulty: "Easy",
-    rating: 4.6,
-    tags: ["Healthy", "Protein", "Quick"],
-    ingredients: ["Chicken", "Bell Peppers", "Onions", "Garlic"],
-    description: "A colorful and nutritious way to use up your leftover vegetables and protein."
-  },
-  {
-    id: 3,
-    title: "Cheesy Pasta Bake",
-    image: "https://images.unsplash.com/photo-1621996346565-e3dbc350d617?w=400&h=300&fit=crop",
-    prepTime: "35 min",
-    servings: 6,
-    difficulty: "Medium",
-    rating: 4.9,
-    tags: ["Comfort", "Family", "Cheesy"],
-    ingredients: ["Pasta", "Cheese", "Tomatoes", "Herbs"],
-    description: "A comforting pasta bake that's perfect for using up leftover cheese and vegetables."
-  }
-];
+interface Recipe {
+  id: string;
+  title: string;
+  description: string;
+  prep_time_minutes: number;
+  servings: number;
+  difficulty: string;
+  rating: number;
+  image_url: string;
+  tags: string[];
+}
 
 const RecipeCards = () => {
+  const navigate = useNavigate();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
+  const fetchRecipes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .limit(6)
+        .order('rating', { ascending: false });
+
+      if (error) throw error;
+
+      const processedRecipes = data?.map(recipe => ({
+        ...recipe,
+        tags: Array.isArray(recipe.tags) ? recipe.tags : []
+      })) || [];
+
+      setRecipes(processedRecipes);
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-muted/30" data-section="recipes">
+        <div className="container mx-auto px-6">
+          <div className="text-center">
+            <p className="text-lg text-muted-foreground">Loading delicious recipes...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="py-16 bg-muted/30">
+    <section className="py-16 bg-muted/30" data-section="recipes">
       <div className="container mx-auto px-6">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">Suggested Recipes</h2>
@@ -54,12 +73,12 @@ const RecipeCards = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {sampleRecipes.map((recipe) => (
+          {recipes.map((recipe) => (
             <Card key={recipe.id} className="overflow-hidden shadow-soft hover:shadow-glow transition-smooth hover:-translate-y-1">
               {/* Recipe Image */}
               <div className="relative h-48 bg-muted">
                 <img
-                  src={recipe.image}
+                  src={recipe.image_url}
                   alt={recipe.title}
                   className="w-full h-full object-cover"
                 />
@@ -81,7 +100,7 @@ const RecipeCards = () => {
                 <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-1" />
-                    {recipe.prepTime}
+                    {recipe.prep_time_minutes} min
                   </div>
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-1" />
@@ -102,20 +121,13 @@ const RecipeCards = () => {
                   ))}
                 </div>
 
-                {/* Ingredients */}
-                <div className="mb-4">
-                  <p className="text-sm font-medium mb-2">Key Ingredients:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {recipe.ingredients.map((ingredient) => (
-                      <Badge key={ingredient} className="text-xs bg-accent/20 text-accent-foreground">
-                        {ingredient}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Action Button */}
-                <Button variant="warm" className="w-full">
+                <Button 
+                  variant="warm" 
+                  className="w-full"
+                  onClick={() => navigate(`/recipe/${recipe.id}`)}
+                >
                   View Recipe
                 </Button>
               </CardContent>
@@ -124,8 +136,12 @@ const RecipeCards = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="outline" size="lg">
-            Load More Recipes
+          <Button 
+            variant="outline" 
+            size="lg"
+            onClick={() => navigate('/auth')}
+          >
+            Sign Up to Save Recipes
           </Button>
         </div>
       </div>
