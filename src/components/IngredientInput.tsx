@@ -51,13 +51,25 @@ const IngredientInput = () => {
       return;
     }
 
-    // For demo purposes, scroll to recipes section
-    const recipeSection = document.querySelector('[data-section="recipes"]');
-    recipeSection?.scrollIntoView({ behavior: 'smooth' });
+    // First try AI generation, then scroll to recipes
+    const aiSection = document.querySelector('[data-section="ai-generator"]');
+    if (aiSection) {
+      aiSection.scrollIntoView({ behavior: 'smooth' });
+      
+      // Populate AI generator with selected ingredients
+      const event = new CustomEvent('populateIngredients', { 
+        detail: { ingredients: selectedIngredients } 
+      });
+      window.dispatchEvent(event);
+    } else {
+      // Fallback to recipe section
+      const recipeSection = document.querySelector('[data-section="recipes"]');
+      recipeSection?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     toast({
-      title: `Found recipes with ${selectedIngredients.join(', ')}!`,
-      description: `Showing recipes that use your selected ingredients`,
+      title: `Ready to generate recipes!`,
+      description: `Using your selected ingredients: ${selectedIngredients.join(', ')}`,
     });
   };
 
