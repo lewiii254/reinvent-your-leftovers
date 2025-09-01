@@ -10,20 +10,12 @@ import { Sparkles, Clock, Users, ChefHat, Loader2, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { findMatchingRecipes, Recipe } from "@/data/hardcodedRecipes";
+import { Rating } from "@/components/ui/rating";
+import ShoppingListGenerator from "@/components/ShoppingListGenerator";
+import RecipeReviews from "@/components/RecipeReviews";
 
-interface GeneratedRecipe {
-  title: string;
-  description: string;
-  prep_time_minutes: number;
-  servings: number;
-  difficulty: string;
-  ingredients: string[];
-  instructions: { step: number; instruction: string }[];
-  tags: string[];
-  tips?: string;
-  rating?: number;
-  image_url?: string;
-}
+// Use the Recipe interface from hardcodedRecipes
 
 const AIRecipeGenerator = () => {
   const [ingredients, setIngredients] = useState<string[]>([]);
@@ -31,7 +23,7 @@ const AIRecipeGenerator = () => {
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [prepTime, setPrepTime] = useState("");
-  const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
+  const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
@@ -60,21 +52,33 @@ const AIRecipeGenerator = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-recipe', {
-        body: {
-          ingredients,
-          dietaryRestrictions,
-          difficulty,
-          prepTime: parseInt(prepTime) || 30
-        }
-      });
+      // Simulate API delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const matchingRecipes = findMatchingRecipes(
+        ingredients,
+        difficulty,
+        prepTime ? parseInt(prepTime) : undefined,
+        dietaryRestrictions
+      );
 
-      if (error) throw error;
+      if (matchingRecipes.length === 0) {
+        toast({
+          title: "No recipes found",
+          description: "Try different ingredients or adjust your filters",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
 
-      setGeneratedRecipe(data.recipe);
+      // Select the best matching recipe (first in the sorted array)
+      const selectedRecipe = matchingRecipes[0];
+      setGeneratedRecipe(selectedRecipe);
+      
       toast({
         title: "Recipe generated!",
-        description: "Your AI-powered leftover recipe is ready",
+        description: `Found a great recipe: ${selectedRecipe.title}`,
       });
     } catch (error) {
       console.error('Error generating recipe:', error);
@@ -269,19 +273,29 @@ const AIRecipeGenerator = () => {
                     </div>
 
                     {/* Recipe Stats */}
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-accent" />
-                        {generatedRecipe.prep_time_minutes} min
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4 text-accent" />
+                          {generatedRecipe.prep_time_minutes} min
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4 text-secondary-warm" />
+                          {generatedRecipe.servings} servings
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ChefHat className="w-4 h-4 text-primary" />
+                          {generatedRecipe.difficulty}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4 text-secondary-warm" />
-                        {generatedRecipe.servings} servings
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <ChefHat className="w-4 h-4 text-primary" />
-                        {generatedRecipe.difficulty}
-                      </div>
+                      {generatedRecipe.rating && (
+                        <div className="flex items-center gap-2">
+                          <Rating value={generatedRecipe.rating} readOnly size="sm" />
+                          <span className="text-sm text-muted-foreground">
+                            {generatedRecipe.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Tags */}
@@ -314,6 +328,35 @@ const AIRecipeGenerator = () => {
                         ))}
                       </ol>
                     </div>
+
+                    {/* Nutrition Info */}
+                    {generatedRecipe.nutrition && (
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                        <h4 className="font-semibold mb-2 text-green-800 dark:text-green-200">Nutrition Information (per serving):</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                          <div className="text-center">
+                            <div className="font-medium text-lg text-green-700 dark:text-green-300">{generatedRecipe.nutrition.calories}</div>
+                            <div className="text-green-600 dark:text-green-400">Calories</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-lg text-green-700 dark:text-green-300">{generatedRecipe.nutrition.protein}g</div>
+                            <div className="text-green-600 dark:text-green-400">Protein</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-lg text-green-700 dark:text-green-300">{generatedRecipe.nutrition.carbs}g</div>
+                            <div className="text-green-600 dark:text-green-400">Carbs</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-lg text-green-700 dark:text-green-300">{generatedRecipe.nutrition.fat}g</div>
+                            <div className="text-green-600 dark:text-green-400">Fat</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-lg text-green-700 dark:text-green-300">{generatedRecipe.nutrition.fiber}g</div>
+                            <div className="text-green-600 dark:text-green-400">Fiber</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Tips */}
                     {generatedRecipe.tips && (
@@ -348,6 +391,19 @@ const AIRecipeGenerator = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Shopping List Generator */}
+            {generatedRecipe && (
+              <ShoppingListGenerator 
+                recipe={generatedRecipe} 
+                userIngredients={ingredients}
+              />
+            )}
+
+            {/* Recipe Reviews */}
+            {generatedRecipe && (
+              <RecipeReviews recipe={generatedRecipe} />
+            )}
           </div>
         </div>
 
